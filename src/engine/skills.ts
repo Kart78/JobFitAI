@@ -1,5 +1,5 @@
 const aliases: Record<string, string[]> = {
-  'power bi': ['powerbi', 'power bi', 'pbix', 'pbip'],
+  'power bi': ['powerbi', 'power bi', 'pbix', 'pbip', 'business intelligence'],
   'power automate': ['power automate', 'flow'],
   dax: ['dax', 'data analysis expressions'],
   sql: ['sql', 'tsql', 't-sql'],
