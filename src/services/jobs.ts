@@ -9,16 +9,15 @@ export async function getJobMatches(profile: ResumeProfile, preferences: SearchP
   const workerUrl = import.meta.env.VITE_WORKER_API_URL as string | undefined;
   let jobs: Job[] = demoJobs;
 
-  if (workerUrl) {
-    try {
-      const response = await fetch(`${workerUrl}/api/jobs`);
-      if (response.ok) {
-        const payload = await response.json() as { jobs?: Job[] };
-        if (payload.jobs?.length) jobs = payload.jobs;
-      }
-    } catch {
-      // The zero-cost MVP intentionally falls back to bundled demo data.
+  try {
+    const endpoint = workerUrl ? `${workerUrl}/api/jobs` : '/api/jobs';
+    const response = await fetch(endpoint);
+    if (response.ok) {
+      const payload = await response.json() as { jobs?: Job[] };
+      if (payload.jobs?.length) jobs = payload.jobs;
     }
+  } catch {
+    // Keep the app usable when the live provider is temporarily unavailable.
   }
 
   return deduplicateJobs(jobs)
