@@ -1,4 +1,3 @@
-import { demoJobs } from '../data/demo';
 import { calculateFitment } from '../engine/fitment';
 import { deduplicateJobs } from '../engine/deduplicate';
 import type { Job } from '../types/Job';
@@ -7,7 +6,7 @@ import type { SearchPreferences } from '../types/User';
 
 export async function getJobMatches(profile: ResumeProfile, preferences: SearchPreferences): Promise<Job[]> {
   const workerUrl = import.meta.env.VITE_WORKER_API_URL as string | undefined;
-  let jobs: Job[] = demoJobs;
+  let jobs: Job[] = [];
 
   try {
     const endpoint = workerUrl ? `${workerUrl}/api/jobs` : '/api/jobs';
@@ -23,7 +22,7 @@ export async function getJobMatches(profile: ResumeProfile, preferences: SearchP
       if (payload.jobs?.length) jobs = payload.jobs;
     }
   } catch {
-    // Keep the app usable when the live provider is temporarily unavailable.
+    jobs = [];
   }
 
   return deduplicateJobs(jobs)
