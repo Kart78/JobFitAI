@@ -11,7 +11,13 @@ export async function getJobMatches(profile: ResumeProfile, preferences: SearchP
 
   try {
     const endpoint = workerUrl ? `${workerUrl}/api/jobs` : '/api/jobs';
-    const response = await fetch(endpoint);
+    const query = new URLSearchParams({
+      roles: preferences.targetRoles.join('|'),
+      locations: preferences.locations.join('|'),
+      radius: String(preferences.radiusMiles),
+      remote: String(preferences.includeRemoteStrongMatches),
+    });
+    const response = await fetch(`${endpoint}?${query}`);
     if (response.ok) {
       const payload = await response.json() as { jobs?: Job[] };
       if (payload.jobs?.length) jobs = payload.jobs;
