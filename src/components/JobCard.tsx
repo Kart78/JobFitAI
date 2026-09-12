@@ -8,16 +8,9 @@ interface Props {
   onStatusChange?: (id: string, status: JobStatus) => void;
 }
 
-const companyCareerPages: Record<string, string> = {
-  Capgemini: 'https://www.capgemini.com/careers/join-capgemini/job-search/',
-  CDW: 'https://cdw.wd5.myworkdayjobs.com/CDWExternal',
-  'Texas Health Resources': 'https://jobs.texashealth.org/',
-  ARGO: 'https://argodata.com/careers/',
-  'Prestige Staffing': 'https://www.prestigestaffing.com/',
-};
-
 export default function JobCard({ job, rank, onStatusChange }: Props) {
-  const applicationUrl = /^https?:\/\//i.test(job.applyUrl) ? job.applyUrl : companyCareerPages[job.company];
+  const isDemoListing = job.source.toLowerCase().includes('demo');
+  const applicationUrl = !isDemoListing && /^https?:\/\//i.test(job.applyUrl) ? job.applyUrl : undefined;
   return (
     <article className="job-card">
       <div className="job-card-top">
@@ -44,7 +37,7 @@ export default function JobCard({ job, rank, onStatusChange }: Props) {
             <a className="button secondary" href={applicationUrl} target="_blank" rel="noopener noreferrer">View Details</a>
             <a className="button" href={applicationUrl} target="_blank" rel="noopener noreferrer">Apply Now <ExternalLink size={15} /></a>
           </>
-        ) : <span className="application-unavailable" title="A live employer application link has not been verified for this demo listing.">Application link unavailable</span>}
+        ) : <span className="application-unavailable" title="This sample listing does not have a verified, job-specific application URL.">Demo listing · application unavailable</span>}
       </div>
     </article>
   );
