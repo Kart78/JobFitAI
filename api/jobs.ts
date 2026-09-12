@@ -44,27 +44,41 @@ function workArrangement(text: string): 'On-site' | 'Hybrid' | 'Remote' {
 
 function salary(job: AdzunaJob, country: string): string | undefined {
   if (!job.salary_min && !job.salary_max) return undefined;
-  const currency = country === 'in' ? 'INR' : 'USD';
-  const formatter = new Intl.NumberFormat(country === 'in' ? 'en-IN' : 'en-US', {
+  const currency = country === 'in' ? 'INR' : country === 'ca' ? 'CAD' : 'USD';
+  const formatter = new Intl.NumberFormat(country === 'in' ? 'en-IN' : country === 'ca' ? 'en-CA' : 'en-US', {
     style: 'currency', currency, maximumFractionDigits: 0,
   });
   if (job.salary_min && job.salary_max) return `${formatter.format(job.salary_min)}–${formatter.format(job.salary_max)}`;
   return formatter.format(job.salary_min ?? job.salary_max ?? 0);
 }
 
-async function searchCountry(country: 'us' | 'in', appId: string, appKey: string) {
+type Country = 'us' | 'ca' | 'in';
+
+function firstLocationFor(country: Country, locations: string[]): string | undefined {
+  const match = locations.find((location) => {
+    const value = location.toLowerCase();
+    if (country === 'in') return value.includes('india') || ['bengaluru', 'hyderabad', 'chennai', 'pune', 'mumbai', 'delhi'].some((city) => value.includes(city));
+    if (country === 'ca') return value.includes('canada') || ['toronto', 'vancouver', 'calgary', 'ottawa', 'montreal'].some((city) => value.includes(city));
+    return !value.includes('india') && !value.includes('canada') && !value.includes('north america') && !value.includes('remote');
+  });
+  return match?.replace(/remote,?\s*/i, '').trim();
+}
+
+async function searchCountry(country: Country, appId: string, appKey: string, roles: string[], locations: string[], radius: number) {
   const params = new URLSearchParams({
     app_id: appId,
     app_key: appKey,
     results_per_page: '30',
-    what_or: 'Power BI Microsoft Fabric BI Architect Analytics Architect Business Intelligence',
+    what_or: roles.length ? roles.join(' ') : 'Power BI Microsoft Fabric BI Architect Analytics Architect Business Intelligence',
     sort_by: 'date',
     full_time: '1',
     permanent: '1',
+    distance: String(Math.min(Math.max(radius, 10), 100)),
     'content-type': 'application/json',
   });
 
-  if (country === 'us') params.set('where', 'Dallas, TX');
+  const where = firstLocationFor(country, locations);
+  if (where) params.set('where', where);
 
   const response = await fetch(`https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params}`);
   if (!response.ok) throw new Error(`Adzuna ${country.toUpperCase()} request failed: ${response.status}`);
@@ -106,10 +120,17 @@ export default async function handler(request: any, response: any) {
   }
 
   try {
-    const results = await Promise.allSettled([
-      searchCountry('us', appId, appKey),
-      searchCountry('in', appId, appKey),
-    ]);
+    const roles = String(request.query?.roles ?? '').split('|').map((value) => value.trim()).filter(Boolean).slice(0, 8);
+    const locations = String(request.query?.locations ?? '').split('|').map((value) => value.trim()).filter(Boolean);
+    const radius = Number(request.query?.radius) || 40;
+    const locationText = locations.join(' ').toLowerCase();
+    const countries: Country[] = [];
+    if (!locations.length || locationText.includes('north america') || locationText.includes('united states') || locations.some((location) => /\b[A-Z]{2}\b/.test(location))) countries.push('us');
+    if (locationText.includes('canada') || locationText.includes('north america')) countries.push('ca');
+    if (locationText.includes('india') || ['bengaluru', 'hyderabad', 'chennai', 'pune', 'mumbai', 'delhi'].some((city) => locationText.includes(city))) countries.push('in');
+    if (!countries.length) countries.push('us');
+
+    const results = await Promise.allSettled(countries.map((country) => searchCountry(country, appId, appKey, roles, locations, radius)));
     const jobs = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
     if (!jobs.length) return response.status(502).json({ error: 'No live job sources responded.' });
 
