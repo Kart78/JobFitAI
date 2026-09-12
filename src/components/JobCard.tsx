@@ -9,6 +9,7 @@ interface Props {
 }
 
 export default function JobCard({ job, rank, onStatusChange }: Props) {
+  const hasApplicationLink = /^https?:\/\//i.test(job.applyUrl);
   return (
     <article className="job-card">
       <div className="job-card-top">
@@ -30,8 +31,12 @@ export default function JobCard({ job, rank, onStatusChange }: Props) {
         <select value={job.status ?? 'New'} onChange={(e) => onStatusChange?.(job.id, e.target.value as JobStatus)}>
           {['New','Seen','Shortlisted','Applied','Interview','Rejected','Offer','Closed'].map((status) => <option key={status}>{status}</option>)}
         </select>
-        <a className="button secondary" href={job.applyUrl || '#'} target="_blank" rel="noreferrer">View Details</a>
-        <a className="button" href={job.applyUrl || '#'} target="_blank" rel="noreferrer">Apply Now <ExternalLink size={15} /></a>
+        {hasApplicationLink ? (
+          <>
+            <a className="button secondary" href={job.applyUrl} target="_blank" rel="noopener noreferrer">View Details</a>
+            <a className="button" href={job.applyUrl} target="_blank" rel="noopener noreferrer">Apply Now <ExternalLink size={15} /></a>
+          </>
+        ) : <span className="application-unavailable" title="A live employer application link has not been verified for this demo listing.">Application link unavailable</span>}
       </div>
     </article>
   );
