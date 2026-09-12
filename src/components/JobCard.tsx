@@ -37,7 +37,7 @@ export default function JobCard({ job, rank, onStatusChange }: Props) {
             <a className="button secondary" href={applicationUrl} target="_blank" rel="noopener noreferrer">View Details</a>
             <a className="button" href={applicationUrl} target="_blank" rel="noopener noreferrer">Apply Now <ExternalLink size={15} /></a>
           </>
-        ) : <span className="application-unavailable" title="This sample listing does not have a verified, job-specific application URL.">Demo listing · application unavailable</span>}
+        ) : <span className="application-unavailable" title="This listing does not have a verified, job-specific application URL.">Application link unavailable</span>}
       </div>
     </article>
   );
