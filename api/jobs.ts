@@ -32,7 +32,14 @@ const excludedEmployerTerms = [
 function inferSkills(text: string): string[] {
   const normalized = text.toLowerCase();
   const found = skills.filter((skill) => normalized.includes(skill.toLowerCase()));
-  return found.length ? found : ['Business Intelligence'];
+  if (found.length) return found;
+  return normalized.includes('business intelligence') ? ['Business Intelligence'] : [];
+}
+
+function isRelevantListing(job: AdzunaJob): boolean {
+  const text = `${job.title} ${job.description ?? ''}`.toLowerCase();
+  return ['power bi', 'microsoft fabric', 'business intelligence', 'analytics architect', 'bi architect', 'data architect', 'power platform']
+    .some((term) => text.includes(term));
 }
 
 function workArrangement(text: string): 'On-site' | 'Hybrid' | 'Remote' {
@@ -93,7 +100,7 @@ async function searchCountry(country: Country, appId: string, appKey: string, ro
   if (!response.ok) throw new Error(`Adzuna ${country.toUpperCase()} request failed: ${response.status}`);
   const payload = await response.json() as AdzunaResponse;
 
-  return (payload.results ?? []).filter((job) => {
+  return (payload.results ?? []).filter((job) => isRelevantListing(job)).filter((job) => {
     const company = job.company?.display_name?.toLowerCase() ?? '';
     return !excludedEmployerTerms.some((term) => company.includes(term));
   }).map((job) => {
