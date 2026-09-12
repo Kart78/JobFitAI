@@ -64,12 +64,21 @@ function firstLocationFor(country: Country, locations: string[]): string | undef
   return match?.replace(/remote,?\s*/i, '').trim();
 }
 
+function searchPhrase(roles: string[]): string {
+  const text = roles.join(' ').toLowerCase();
+  if (text.includes('power bi')) return 'Power BI';
+  if (text.includes('fabric')) return 'Microsoft Fabric';
+  if (text.includes('tableau')) return 'Tableau';
+  if (text.includes('analytics')) return 'Data Analytics';
+  return 'Business Intelligence';
+}
+
 async function searchCountry(country: Country, appId: string, appKey: string, roles: string[], locations: string[], radius: number) {
   const params = new URLSearchParams({
     app_id: appId,
     app_key: appKey,
     results_per_page: '30',
-    what_or: roles.length ? roles.join(' ') : 'Power BI Microsoft Fabric BI Architect Analytics Architect Business Intelligence',
+    what_phrase: searchPhrase(roles),
     sort_by: 'date',
     full_time: '1',
     permanent: '1',
