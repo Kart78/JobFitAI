@@ -37,9 +37,13 @@ function inferSkills(text: string): string[] {
 }
 
 function isRelevantListing(job: AdzunaJob): boolean {
-  const text = `${job.title} ${job.description ?? ''}`.toLowerCase();
-  return ['power bi', 'microsoft fabric', 'business intelligence', 'analytics architect', 'bi architect', 'data architect', 'power platform']
+  const title = job.title.toLowerCase();
+  const text = `${title} ${job.description ?? ''}`.toLowerCase();
+  const technologyMatch = ['power bi', 'microsoft fabric', 'business intelligence', 'analytics architect', 'bi architect', 'data architect', 'power platform']
     .some((term) => text.includes(term));
+  const roleMatch = ['analyst', 'analytics', 'architect', 'business intelligence', 'bi ', 'developer', 'reporting', 'data ', 'manager', 'director', 'consultant']
+    .some((term) => title.includes(term));
+  return technologyMatch && roleMatch;
 }
 
 function workArrangement(text: string): 'On-site' | 'Hybrid' | 'Remote' {
