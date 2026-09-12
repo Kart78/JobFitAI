@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { SearchPreferences } from '../types/User';
 
 interface Props { preferences: SearchPreferences; onChange: (preferences: SearchPreferences) => void; }
@@ -6,6 +7,7 @@ const roleOptions = ['BI Architect','Analytics Architect','Power BI Architect','
 const locationSuggestions = ['North America','Remote, North America','United States','Remote, US','Dallas, TX','Plano, TX','McKinney, TX','Irving, TX','Richardson, TX','Frisco, TX','Canada','India','Remote, India','Bengaluru, India','Hyderabad, India','Chennai, India','Pune, India','Mumbai, India','Delhi NCR, India'];
 
 export default function Preferences({ preferences, onChange }: Props) {
+  const navigate = useNavigate();
   const [locationInput, setLocationInput] = useState('');
   const toggle = (field: 'targetRoles'|'locations'|'employmentTypes', value: string) => {
     const current = preferences[field];
@@ -40,6 +42,7 @@ export default function Preferences({ preferences, onChange }: Props) {
       </section>
       <section className="section-card"><h2>Employment & Remote</h2><div className="check-grid"><label className="check-card"><input type="checkbox" checked={preferences.employmentTypes.includes('Full Time')} onChange={() => toggle('employmentTypes','Full Time')}/><span>Full Time</span></label><label className="check-card"><input type="checkbox" checked={preferences.employmentTypes.includes('Contract')} onChange={() => toggle('employmentTypes','Contract')}/><span>Contract</span></label><label className="check-card"><input type="checkbox" checked={preferences.includeRemoteStrongMatches} onChange={(e) => onChange({...preferences, includeRemoteStrongMatches: e.target.checked})}/><span>Exceptional Remote US Matches</span></label></div></section>
       <section className="section-card"><h2>Minimum Fitment</h2><label className="range-row"><input type="range" min="5" max="10" step="0.1" value={preferences.minimumFitment} onChange={(e) => onChange({...preferences, minimumFitment: Number(e.target.value)})}/><strong>{preferences.minimumFitment.toFixed(1)} / 10</strong></label></section>
+      <button className="button preference-search" type="button" disabled={!preferences.targetRoles.length || !preferences.locations.length} onClick={() => navigate('/jobs')}>Search Matching Jobs</button>
     </div>
   );
 }
