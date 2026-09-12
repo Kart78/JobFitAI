@@ -22,6 +22,7 @@ export default function App() {
   const [statuses, setStatuses] = useLocalStorage<Record<string, JobStatus>>('jobfit-statuses', {});
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -32,7 +33,7 @@ export default function App() {
       setLoading(false);
     });
     return () => { active = false; };
-  }, [profile, preferences, statuses]);
+  }, [profile, preferences, refreshKey]);
 
   const statusAwareJobs = useMemo(() => jobs.map((job) => ({ ...job, status: statuses[job.id] ?? job.status ?? 'New' })), [jobs, statuses]);
   const onStatusChange = (id: string, status: JobStatus) => setStatuses({ ...statuses, [id]: status });
@@ -50,7 +51,7 @@ export default function App() {
             <Route path="/" element={<Dashboard profile={profile} preferences={preferences} jobs={statusAwareJobs} onStatusChange={onStatusChange} onExport={onExport}/>} />
             <Route path="/resume" element={<Resume profile={profile} onUpload={onUpload} onProfileChange={setProfile}/>} />
             <Route path="/preferences" element={<Preferences preferences={preferences} onChange={setPreferences}/>} />
-            <Route path="/jobs" element={<JobMatches jobs={statusAwareJobs} onStatusChange={onStatusChange} onExport={onExport}/>} />
+            <Route path="/jobs" element={<JobMatches jobs={statusAwareJobs} loading={loading} onRefresh={() => setRefreshKey((value) => value + 1)} onStatusChange={onStatusChange} onExport={onExport}/>} />
             <Route path="/applications" element={<Applications jobs={statusAwareJobs}/>} />
             <Route path="/reports" element={<Reports preferences={preferences} onChange={setPreferences} jobs={statusAwareJobs} onExport={onExport}/>} />
             <Route path="/settings" element={<Settings/>} />
