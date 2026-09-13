@@ -23,34 +23,11 @@ const skills = [
   'Azure', 'Cognos', 'GenAI',
 ];
 
-const excludedEmployerTerms = [
-  'staffing', 'recruiting', 'recruitment', 'consultancy', 'consulting services',
-  'capgemini', 'accenture', 'cognizant', 'infosys', 'tata consultancy', 'tcs',
-  'wipro', 'hcltech', 'deloitte',
-];
-
 function inferSkills(text: string): string[] {
   const normalized = text.toLowerCase();
   const found = skills.filter((skill) => normalized.includes(skill.toLowerCase()));
   if (found.length) return found;
   return normalized.includes('business intelligence') ? ['Business Intelligence'] : [];
-}
-
-function isRelevantListing(job: AdzunaJob): boolean {
-  const title = job.title.toLowerCase();
-  const text = `${title} ${job.description ?? ''}`.toLowerCase();
-  const technologyMatch = ['power bi', 'microsoft fabric', 'business intelligence', 'analytics architect', 'bi architect', 'data architect', 'power platform']
-    .some((term) => text.includes(term));
-  const roleMatch = ['analyst', 'analytics', 'architect', 'business intelligence', 'bi ', 'developer', 'reporting', 'data ', 'manager', 'director', 'consultant']
-    .some((term) => title.includes(term));
-  return technologyMatch && roleMatch;
-}
-
-function workArrangement(text: string): 'On-site' | 'Hybrid' | 'Remote' {
-  const value = text.toLowerCase();
-  if (value.includes('remote')) return 'Remote';
-  if (value.includes('hybrid')) return 'Hybrid';
-  return 'On-site';
 }
 
 function salary(job: AdzunaJob, country: string): string | undefined {
@@ -84,7 +61,7 @@ function searchPhrase(roles: string[]): string {
   return 'Business Intelligence';
 }
 
-async function searchCountry(country: Country, appId: string, appKey: string, roles: string[], locations: string[], radius: number) {
+async function searchCountry(country: Country, appId: string, appKey: string, roles: string[], locations: string[], radius: number): Promise<SourceJob[]> {
   const params = new URLSearchParams({
     app_id: appId,
     app_key: appKey,
@@ -104,30 +81,38 @@ async function searchCountry(country: Country, appId: string, appKey: string, ro
   if (!response.ok) throw new Error(`Adzuna ${country.toUpperCase()} request failed: ${response.status}`);
   const payload = await response.json() as AdzunaResponse;
 
-  return (payload.results ?? []).filter((job) => isRelevantListing(job)).filter((job) => {
-    const company = job.company?.display_name?.toLowerCase() ?? '';
-    return !excludedEmployerTerms.some((term) => company.includes(term));
-  }).map((job) => {
+  return (payload.results ?? []).map((job): SourceJob => {
     const description = job.description ?? '';
     const location = job.location?.display_name ?? (country === 'in' ? 'India' : 'United States');
     const text = `${job.title} ${description} ${location}`;
     return {
-      id: `adzuna-${country}-${job.id}`,
+      source: 'Adzuna', sourceJobId: `${country}-${job.id}`,
       title: job.title,
       company: job.company?.display_name ?? 'Employer not listed',
       location,
-      workArrangement: workArrangement(text),
+      workArrangement: arrangement(text),
       employmentType: 'Full Time' as const,
       salary: salary(job, country),
-      postedDate: job.created,
-      freshness: job.created ? `Posted ${job.created.slice(0, 10)}` : 'Live listing',
+      postedAt: job.created,
       applyUrl: job.redirect_url,
-      source: 'Adzuna live jobs',
       description,
-      requiredSkills: inferSkills(text),
-      status: 'New' as const,
+      employerDirect: false,
     };
-  }).filter((job) => /^https?:\/\//i.test(job.applyUrl));
+  });
+}
+
+function toClientJob(job: SourceJob) {
+  const text = `${job.title} ${job.description}`;
+  return {
+    id: `${job.source.toLowerCase()}-${job.sourceJobId}`,
+    title: job.title, company: job.company, location: job.location,
+    workArrangement: job.workArrangement, employmentType: job.employmentType,
+    salary: job.salary, postedDate: job.postedAt,
+    freshness: job.postedAt ? `Posted ${job.postedAt.slice(0, 10)}` : 'Live listing',
+    applyUrl: job.applyUrl, source: job.employerDirect ? `${job.source} · Direct employer` : `${job.source} live jobs`,
+    description: job.description, requiredSkills: inferSkills(text), status: 'New' as const,
+    isPriority: job.employerDirect,
+  };
 }
 
 export default async function handler(request: any, response: any) {
@@ -135,10 +120,6 @@ export default async function handler(request: any, response: any) {
 
   const appId = process.env.ADZUNA_APP_ID;
   const appKey = process.env.ADZUNA_API_KEY;
-  if (!appId || !appKey) {
-    return response.status(503).json({ error: 'Live job search is not configured.' });
-  }
-
   try {
     const roles = String(request.query?.roles ?? '').split('|').map((value) => value.trim()).filter(Boolean).slice(0, 8);
     const locations = String(request.query?.locations ?? '').split('|').map((value) => value.trim()).filter(Boolean);
@@ -150,8 +131,15 @@ export default async function handler(request: any, response: any) {
     if (locationText.includes('india') || ['bengaluru', 'hyderabad', 'chennai', 'pune', 'mumbai', 'delhi'].some((city) => locationText.includes(city))) countries.push('in');
     if (!countries.length) countries.push('us');
 
-    const results = await Promise.allSettled(countries.map((country) => searchCountry(country, appId, appKey, roles, locations, radius)));
-    const jobs = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
+    const input: SearchInput = { roles, locations, radius };
+    const boards = configuredBoards(process.env);
+    const sourceCalls: Array<Promise<SourceJob[]>> = [
+      greenhouse(boards.greenhouse), lever(boards.lever), ashby(boards.ashby), jooble(process.env.JOOBLE_API_KEY, input),
+    ];
+    if (appId && appKey) sourceCalls.push(...countries.map((country) => searchCountry(country, appId, appKey, roles, locations, radius)));
+    const results = await Promise.allSettled(sourceCalls);
+    const normalized = deduplicate(results.flatMap((result) => result.status === 'fulfilled' ? result.value : []));
+    const jobs = normalized.map(toClientJob);
     if (!jobs.length) return response.status(502).json({ error: 'No live job sources responded.' });
 
     response.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=3600');
@@ -160,3 +148,7 @@ export default async function handler(request: any, response: any) {
     return response.status(502).json({ error: error instanceof Error ? error.message : 'Job search failed.' });
   }
 }
+import { ashby, configuredBoards, greenhouse, lever } from './_lib/atsSources';
+import { arrangement, deduplicate } from './_lib/normalize';
+import { jooble } from './_lib/jooble';
+import type { SearchInput, SourceJob } from './_lib/types';
