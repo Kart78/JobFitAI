@@ -24,4 +24,5 @@ export interface SourceJob {
 export interface BoardConfig {
   company: string;
   token: string;
+  region?: 'us' | 'eu';
 }
