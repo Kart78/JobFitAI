@@ -64,11 +64,12 @@ ADZUNA_APP_ID
 ADZUNA_API_KEY
 JOOBLE_API_KEY
 GREENHOUSE_BOARDS_JSON=[{"company":"Example","token":"example-board"}]
-LEVER_SITES_JSON=[{"company":"Example","token":"example-site"}]
+LEVER_SITES_JSON=[{"company":"Example","token":"example-site","region":"us"}]
 ASHBY_BOARDS_JSON=[{"company":"Example","token":"example-board"}]
 ```
 
 ATS board arrays may remain empty. Never add API keys to a `VITE_` variable.
+For Lever, `token` is the public site slug from `jobs.lever.co/{slug}`. Use `region: "eu"` only for boards hosted at `api.eu.lever.co`; otherwise use `"us"`. Lever does not require an API key.
 
 ## Recommended next implementation order
 
