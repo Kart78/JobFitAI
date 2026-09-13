@@ -55,7 +55,20 @@ The default Vite environment points to `http://localhost:8787` when you copy `.e
 
 ## Real job discovery
 
-Implement permitted sources in `worker/jobSearch.ts`. Prefer official employer APIs, ATS feeds, RSS, structured search sources, and company career pages that allow automated access. Store each job with a normalized fingerprint and `last_verified_at` so stale or duplicate jobs are not re-sent.
+The Vercel `/api/jobs` endpoint combines Adzuna, optional Jooble, and public direct-employer ATS feeds from Greenhouse, Lever, and Ashby. Results are normalized, deduplicated, screened for relevant BI roles and service-company names, then scored in the client.
+
+Configure private Vercel variables for enabled sources:
+
+```text
+ADZUNA_APP_ID
+ADZUNA_API_KEY
+JOOBLE_API_KEY
+GREENHOUSE_BOARDS_JSON=[{"company":"Example","token":"example-board"}]
+LEVER_SITES_JSON=[{"company":"Example","token":"example-site"}]
+ASHBY_BOARDS_JSON=[{"company":"Example","token":"example-board"}]
+```
+
+ATS board arrays may remain empty. Never add API keys to a `VITE_` variable.
 
 ## Recommended next implementation order
 
