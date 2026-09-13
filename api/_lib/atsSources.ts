@@ -22,9 +22,15 @@ export async function greenhouse(configs: BoardConfig[]): Promise<SourceJob[]> {
 }
 
 export async function lever(configs: BoardConfig[]): Promise<SourceJob[]> {
-  const results = await Promise.allSettled(configs.map(async ({ company, token }) => {
-    const jobs = await json(`https://api.lever.co/v0/postings/${encodeURIComponent(token)}?mode=json`);
-    return (jobs ?? []).map((job: any): SourceJob => ({
+  const results = await Promise.allSettled(configs.map(async ({ company, token, region }) => {
+    const host = region === 'eu' ? 'https://api.eu.lever.co' : 'https://api.lever.co';
+    const jobs: any[] = [];
+    for (let skip = 0; skip < 600; skip += 200) {
+      const page = await json(`${host}/v0/postings/${encodeURIComponent(token)}?mode=json&limit=200&skip=${skip}`);
+      jobs.push(...(page ?? []));
+      if (!Array.isArray(page) || page.length < 200) break;
+    }
+    return jobs.map((job: any): SourceJob => ({
       source: 'Lever', sourceJobId: String(job.id), title: job.text, company,
       location: job.categories?.location ?? 'Location not listed',
       workArrangement: arrangement(`${job.workplaceType ?? ''} ${job.categories?.location ?? ''}`),
