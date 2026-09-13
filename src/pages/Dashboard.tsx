@@ -14,16 +14,19 @@ interface Props {
 }
 
 export default function Dashboard({ profile, preferences, jobs, onStatusChange, onExport }: Props) {
+  const firstName = profile.fullName.trim().split(/\s+/)[0] || 'there';
+  const profileReady = Boolean(profile.headline && profile.skills.length && profile.totalYearsExperience);
+  const preferencesReady = Boolean(preferences.targetRoles.length && preferences.locations.length);
   return (
     <div className="page-stack">
       <section className="hero">
-        <div><span className="eyebrow">PERSONAL JOB MATCHING</span><h1>Good morning, {profile.fullName}.</h1><p>Your strongest opportunities are ranked from your resume and search preferences.</p></div>
+        <div><span className="eyebrow">PERSONAL JOB MATCHING</span><h1>Welcome, {firstName}.</h1><p>Your strongest opportunities are ranked from your resume and search preferences.</p></div>
         <Link className="button" to="/jobs"><Search size={17}/> View Matches</Link>
       </section>
 
       <section className="setup-grid">
-        <Link to="/resume" className="setup-card"><div className="step-icon"><FileText/></div><div><small>STEP 1</small><h3>Resume & Profile</h3><p>{profile.fileName ?? 'Upload your resume'} · {profile.totalYearsExperience}+ years</p></div><span className="done">Completed</span></Link>
-        <Link to="/preferences" className="setup-card"><div className="step-icon"><SlidersHorizontal/></div><div><small>STEP 2</small><h3>Preferences</h3><p>{preferences.locations.slice(0,3).join(', ')} · {preferences.minimumFitment.toFixed(1)}+</p></div><span className="done">Ready</span></Link>
+        <Link to="/resume" className="setup-card"><div className="step-icon"><FileText/></div><div><small>STEP 1</small><h3>Resume & Profile</h3><p>{profile.fileName ?? 'Upload your resume'}{profile.totalYearsExperience ? ` · ${profile.totalYearsExperience}+ years` : ''}</p></div><span className={profileReady ? 'done' : 'muted-pill'}>{profileReady ? 'Completed' : 'Setup'}</span></Link>
+        <Link to="/preferences" className="setup-card"><div className="step-icon"><SlidersHorizontal/></div><div><small>STEP 2</small><h3>Preferences</h3><p>{preferences.locations.slice(0,3).join(', ') || 'Choose roles and locations'} · {preferences.minimumFitment.toFixed(1)}+</p></div><span className={preferencesReady ? 'done' : 'muted-pill'}>{preferencesReady ? 'Ready' : 'Setup'}</span></Link>
         <Link to="/reports" className="setup-card"><div className="step-icon"><Mail/></div><div><small>STEP 3</small><h3>Daily Report</h3><p>{preferences.emailReports ? `Active · ${preferences.reportTime} CT` : 'Email delivery is off'}</p></div><span className={preferences.emailReports ? 'done' : 'muted-pill'}>{preferences.emailReports ? 'Active' : 'Off'}</span></Link>
       </section>
 

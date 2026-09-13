@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { HashRouter, Route, Routes } from 'react-router-dom';
+import AuthScreen from './components/AuthScreen';
 import MobileNav from './components/MobileNav';
 import Sidebar from './components/Sidebar';
-import { demoProfile, defaultPreferences } from './data/demo';
+import { createEmptyProfile, defaultPreferences } from './data/demo';
+import { useAuth } from './hooks/useAuth';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Applications from './pages/Applications';
 import Dashboard from './pages/Dashboard';
@@ -14,12 +17,24 @@ import Settings from './pages/Settings';
 import { exportJobsToExcel } from './services/exportExcel';
 import { getJobMatches } from './services/jobs';
 import { parseResume } from './services/resume';
+import { signOut } from './services/supabase';
 import type { Job, JobStatus } from './types/Job';
 
 export default function App() {
-  const [profile, setProfile] = useLocalStorage('jobfit-profile', demoProfile);
-  const [preferences, setPreferences] = useLocalStorage('jobfit-preferences', defaultPreferences);
-  const [statuses, setStatuses] = useLocalStorage<Record<string, JobStatus>>('jobfit-statuses', {});
+  const { session, loading } = useAuth();
+
+  if (loading) return <div className="auth-loading">Securing your JobFit workspace…</div>;
+  if (!session) return <AuthScreen />;
+
+  return <AuthenticatedApp key={session.user.id} user={session.user} />;
+}
+
+function AuthenticatedApp({ user }: { user: User }) {
+  const displayName = String(user.user_metadata.full_name || user.user_metadata.name || '').trim();
+  const storagePrefix = `jobfit:${user.id}`;
+  const [profile, setProfile] = useLocalStorage(`${storagePrefix}:profile`, createEmptyProfile(displayName));
+  const [preferences, setPreferences] = useLocalStorage(`${storagePrefix}:preferences`, defaultPreferences);
+  const [statuses, setStatuses] = useLocalStorage<Record<string, JobStatus>>(`${storagePrefix}:statuses`, {});
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -43,9 +58,9 @@ export default function App() {
   return (
     <HashRouter>
       <div className="app-shell">
-        <Sidebar />
+        <Sidebar displayName={displayName} email={user.email ?? ''} onSignOut={() => { void signOut(); }} />
         <main className="content">
-          <header className="topbar"><div><strong>JobFit AI</strong><span>Resume-driven job matching</span></div><span className="privacy">100% Free MVP · Local-first settings</span></header>
+          <header className="topbar"><div><strong>JobFit AI</strong><span>Resume-driven job matching</span></div><span className="privacy">Private · Google authenticated</span></header>
           {loading && <div className="loading-bar">Refreshing match scores…</div>}
           <Routes>
             <Route path="/" element={<Dashboard profile={profile} preferences={preferences} jobs={statusAwareJobs} onStatusChange={onStatusChange} onExport={onExport}/>} />

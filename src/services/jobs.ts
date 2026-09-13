@@ -5,6 +5,8 @@ import type { ResumeProfile } from '../types/Resume';
 import type { SearchPreferences } from '../types/User';
 
 export async function getJobMatches(profile: ResumeProfile, preferences: SearchPreferences): Promise<Job[]> {
+  if (!preferences.targetRoles.length || !preferences.locations.length) return [];
+
   const workerUrl = import.meta.env.VITE_WORKER_API_URL as string | undefined;
   let jobs: Job[] = [];
 
